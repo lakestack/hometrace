@@ -122,7 +122,7 @@ export async function GET(
             }
           </p>
           <div class="appointment-details">
-            <strong>Status:</strong> ${appointment.status.toUpperCase()}<br>
+            <strong>Status:</strong> ${(appointment.status || 'pending').toUpperCase()}<br>
             <strong>Proposed Time:</strong> ${new Date(appointment.agentScheduledDateTime).toLocaleDateString()} at ${new Date(appointment.agentScheduledDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>
           <a href="${process.env.NEXTAUTH_URL}" class="btn">

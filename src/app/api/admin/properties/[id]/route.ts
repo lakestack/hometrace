@@ -6,7 +6,7 @@ import connectMongo from '@/lib/connectMongo';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -22,7 +22,8 @@ export async function GET(
 
     await connectMongo();
 
-    const property = await Property.findById(params.id);
+    const resolvedParams = await params;
+    const property = await Property.findById(resolvedParams.id);
 
     if (!property) {
       return NextResponse.json(

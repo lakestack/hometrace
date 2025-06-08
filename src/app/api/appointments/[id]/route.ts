@@ -42,15 +42,16 @@ export async function PATCH(
     await connectMongo();
 
     const body = await req.json();
-    const {
-      status,
-      message,
-      customerPreferredDates,
-      agentScheduledDateTime,
-    } = body;
+    const { status, message, customerPreferredDates, agentScheduledDateTime } =
+      body;
     const { id } = await params;
 
-    console.log('Updating appointment:', id, 'with data:', JSON.stringify(body, null, 2));
+    console.log(
+      'Updating appointment:',
+      id,
+      'with data:',
+      JSON.stringify(body, null, 2),
+    );
 
     const appointment = await Appointment.findById(id);
 
@@ -66,7 +67,7 @@ export async function PATCH(
       appointment.status = status;
       console.log('Updated status to:', status);
     }
-    
+
     if (message !== undefined) {
       appointment.message = message;
       console.log('Updated message to:', message);
@@ -79,32 +80,41 @@ export async function PATCH(
         for (const [index, prefDate] of customerPreferredDates.entries()) {
           if (!prefDate.date || !prefDate.time) {
             return NextResponse.json(
-              { error: `Each preferred date must have date and time. Issue with item ${index + 1}` },
+              {
+                error: `Each preferred date must have date and time. Issue with item ${index + 1}`,
+              },
               { status: 400 },
             );
           }
-          
+
           // Validate date format (YYYY-MM-DD)
           const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
           if (!dateRegex.test(prefDate.date)) {
             return NextResponse.json(
-              { error: `Invalid date format for item ${index + 1}. Expected YYYY-MM-DD format` },
+              {
+                error: `Invalid date format for item ${index + 1}. Expected YYYY-MM-DD format`,
+              },
               { status: 400 },
             );
           }
-          
+
           // Validate time format (HH:MM)
           const timeRegex = /^\d{2}:\d{2}$/;
           if (!timeRegex.test(prefDate.time)) {
             return NextResponse.json(
-              { error: `Invalid time format for item ${index + 1}. Expected HH:MM format` },
+              {
+                error: `Invalid time format for item ${index + 1}. Expected HH:MM format`,
+              },
               { status: 400 },
             );
           }
         }
-        
+
         appointment.customerPreferredDates = customerPreferredDates;
-        console.log('Updated customerPreferredDates to:', customerPreferredDates);
+        console.log(
+          'Updated customerPreferredDates to:',
+          customerPreferredDates,
+        );
       } else {
         return NextResponse.json(
           { error: 'customerPreferredDates must be an array' },
@@ -116,7 +126,7 @@ export async function PATCH(
     // Handle agent scheduled date/time updates with validation
     if (agentScheduledDateTime !== undefined) {
       if (agentScheduledDateTime === null) {
-        appointment.agentScheduledDateTime = null;
+        appointment.agentScheduledDateTime = undefined;
         console.log('Cleared agentScheduledDateTime');
       } else {
         try {
@@ -128,7 +138,10 @@ export async function PATCH(
             );
           }
           appointment.agentScheduledDateTime = scheduledDate;
-          console.log('Updated agentScheduledDateTime to:', scheduledDate.toISOString());
+          console.log(
+            'Updated agentScheduledDateTime to:',
+            scheduledDate.toISOString(),
+          );
         } catch (dateError) {
           console.error('Error parsing agentScheduledDateTime:', dateError);
           return NextResponse.json(
@@ -144,7 +157,8 @@ export async function PATCH(
     console.log('Appointment saved successfully');
 
     // Return populated appointment
-    const updatedAppointment = await Appointment.findById(id).populate('propertyId');
+    const updatedAppointment =
+      await Appointment.findById(id).populate('propertyId');
 
     return NextResponse.json({
       success: true,

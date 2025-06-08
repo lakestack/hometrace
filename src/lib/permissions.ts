@@ -11,8 +11,13 @@ export interface UserSession {
 
 export async function requireAuth(req: NextRequest): Promise<UserSession> {
   const session = await getServerSession(authOptions);
-  
-  if (!session?.user) {
+
+  if (
+    !session?.user ||
+    !session.user.id ||
+    !session.user.email ||
+    !session.user.role
+  ) {
     throw new Error('Authentication required');
   }
 
@@ -24,9 +29,11 @@ export async function requireAuth(req: NextRequest): Promise<UserSession> {
   };
 }
 
-export async function requireAdminOrAgent(req: NextRequest): Promise<UserSession> {
+export async function requireAdminOrAgent(
+  req: NextRequest,
+): Promise<UserSession> {
   const user = await requireAuth(req);
-  
+
   if (!['admin', 'agent'].includes(user.role)) {
     throw new Error('Admin or Agent access required');
   }
@@ -36,7 +43,7 @@ export async function requireAdminOrAgent(req: NextRequest): Promise<UserSession
 
 export async function requireAdmin(req: NextRequest): Promise<UserSession> {
   const user = await requireAuth(req);
-  
+
   if (user.role !== 'admin') {
     throw new Error('Admin access required');
   }
@@ -44,31 +51,39 @@ export async function requireAdmin(req: NextRequest): Promise<UserSession> {
   return user;
 }
 
-export function canAccessProperty(userRole: string, userId: string, property: any): boolean {
+export function canAccessProperty(
+  userRole: string,
+  userId: string,
+  property: any,
+): boolean {
   // Admin can access all properties
   if (userRole === 'admin') {
     return true;
   }
-  
+
   // Agent can only access their own properties
   if (userRole === 'agent') {
     return property.agentId?.toString() === userId;
   }
-  
+
   return false;
 }
 
-export function canAccessAppointment(userRole: string, userId: string, appointment: any): boolean {
+export function canAccessAppointment(
+  userRole: string,
+  userId: string,
+  appointment: any,
+): boolean {
   // Admin can access all appointments
   if (userRole === 'admin') {
     return true;
   }
-  
+
   // Agent can only access appointments for their properties
   if (userRole === 'agent') {
     return appointment.agentId?.toString() === userId;
   }
-  
+
   return false;
 }
 
@@ -77,12 +92,12 @@ export function getPropertyFilter(userRole: string, userId: string): object {
   if (userRole === 'admin') {
     return {};
   }
-  
+
   // Agent only sees their properties
   if (userRole === 'agent') {
     return { agentId: userId };
   }
-  
+
   return {};
 }
 
@@ -91,11 +106,11 @@ export function getAppointmentFilter(userRole: string, userId: string): object {
   if (userRole === 'admin') {
     return {};
   }
-  
+
   // Agent only sees appointments for their properties
   if (userRole === 'agent') {
     return { agentId: userId };
   }
-  
+
   return {};
 }

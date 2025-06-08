@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import PropertyCard from '@/components/PropertyCard';
@@ -27,7 +27,7 @@ function useDebounce<T>(value: T, delay: number): T {
 // Omit Document specific fields and make a client-side type
 type Property = Omit<PropertyItem, 'id' | '_doc'> & { _id: string };
 
-export default function PropertiesPage() {
+function PropertiesContent() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -614,5 +614,22 @@ export default function PropertiesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PropertiesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p>Loading properties...</p>
+          </div>
+        </div>
+      }
+    >
+      <PropertiesContent />
+    </Suspense>
   );
 }

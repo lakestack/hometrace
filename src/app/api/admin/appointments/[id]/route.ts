@@ -53,7 +53,11 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || !['admin', 'agent'].includes(session.user.role)) {
+    if (
+      !session?.user ||
+      !session.user.role ||
+      !['admin', 'agent'].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -207,7 +211,7 @@ export async function PATCH(
       const oldScheduledDateTime = appointment.agentScheduledDateTime;
 
       if (agentScheduledDateTime === null) {
-        appointment.agentScheduledDateTime = null;
+        appointment.agentScheduledDateTime = undefined;
         console.log('Cleared agentScheduledDateTime');
       } else {
         try {
@@ -262,21 +266,23 @@ export async function PATCH(
             ? new Date(agentScheduledDateTime)
             : appointment.agentScheduledDateTime;
 
-          const emailResult = await sendTimeProposalNotification({
-            customerEmail: appointment.email,
-            customerName: `${appointment.firstName} ${appointment.lastName}`,
-            appointmentId: appointment._id.toString(),
-            propertyAddress,
-            proposedDateTime,
-            agentName: `${agent.firstName} ${agent.lastName}`,
-            agentEmail: agent.email,
-          });
+          if (proposedDateTime) {
+            const emailResult = await sendTimeProposalNotification({
+              customerEmail: appointment.email,
+              customerName: `${appointment.firstName} ${appointment.lastName}`,
+              appointmentId: (appointment._id as any).toString(),
+              propertyAddress,
+              proposedDateTime,
+              agentName: `${agent.firstName} ${agent.lastName}`,
+              agentEmail: agent.email,
+            });
 
-          proposalEmailSent = emailResult.success;
-          console.log(
-            'Time proposal email sent successfully:',
-            emailResult.messageId,
-          );
+            proposalEmailSent = emailResult.success;
+            console.log(
+              'Time proposal email sent successfully:',
+              emailResult.messageId,
+            );
+          }
         }
       } catch (emailError) {
         console.error('Error sending proposal email:', emailError);
@@ -299,7 +305,7 @@ export async function PATCH(
             customerName: `${appointment.firstName} ${appointment.lastName}`,
             appointments: [
               {
-                appointmentId: appointment._id.toString(),
+                appointmentId: (appointment._id as any).toString(),
                 propertyAddress,
                 newDateTime:
                   appointment.agentScheduledDateTime ||
