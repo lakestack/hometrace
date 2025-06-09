@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import Appointment from '@/models/appointment';
-import Property from '@/models/property';
 import connectMongo from '@/lib/connectMongo';
 
 export async function GET(req: NextRequest) {
   try {
-    const token = await getToken({ req });
-    if (!token || !token.role || !['admin', 'agent'].includes(token.role)) {
+    console.log('Admin appointments API called');
+
+    const session = await getServerSession(authOptions);
+    if (
+      !session?.user ||
+      !session.user.role ||
+      !['admin', 'agent'].includes(session.user.role)
+    ) {
+      console.log('Unauthorized access attempt:', {
+        session: !!session,
+        role: session?.user?.role,
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('User authenticated:', {
+      role: session.user.role,
+      userId: session.user.id,
+    });
+
     await connectMongo();
+    console.log('MongoDB connected successfully');
+
+    // Test basic appointment count
+    const testCount = await Appointment.countDocuments({});
+    console.log('Total appointments in database:', testCount);
 
     const page = parseInt(req.nextUrl.searchParams.get('page') || '1');
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20');
@@ -21,12 +41,23 @@ export async function GET(req: NextRequest) {
     const search = req.nextUrl.searchParams.get('search');
     const status = req.nextUrl.searchParams.get('status');
 
+    console.log('Query parameters:', {
+      page,
+      limit,
+      agentId,
+      startDate,
+      endDate,
+      search,
+      status,
+    });
+
+    // Build query object for role-based filtering
     let query: any = {};
 
     // If user is an agent, only show appointments for their properties
-    if (token.role === 'agent') {
-      query.agentId = token.sub; // token.sub contains the user ID
-    } else if (token.role === 'admin' && agentId && agentId !== 'all') {
+    if (session.user.role === 'agent') {
+      query.agentId = session.user.id; // session.user.id contains the user ID
+    } else if (session.user.role === 'admin' && agentId && agentId !== 'all') {
       // Admin can filter by specific agent
       query.agentId = agentId;
     }
@@ -36,12 +67,9 @@ export async function GET(req: NextRequest) {
       query.status = status;
     }
 
-    // Note: Search is handled in aggregation pipeline below when search term is present
-
-    // Date range filter for calendar view
+    // Validate date range if provided
     if (startDate && endDate) {
       try {
-        // For calendar view, we need to check both customer preferred dates and agent scheduled date
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
 
@@ -52,29 +80,6 @@ export async function GET(req: NextRequest) {
             { error: 'Invalid date range provided' },
             { status: 400 },
           );
-        }
-
-        const dateQuery = {
-          $or: [
-            {
-              'customerPreferredDates.date': {
-                $gte: startDateObj.toISOString().split('T')[0],
-                $lte: endDateObj.toISOString().split('T')[0],
-              },
-            },
-            {
-              agentScheduledDateTime: {
-                $gte: startDateObj,
-                $lte: endDateObj,
-              },
-            },
-          ],
-        };
-
-        if (query.$and) {
-          query.$and.push(dateQuery);
-        } else {
-          query.$and = [dateQuery];
         }
       } catch (dateError) {
         console.error('Error processing date range:', dateError);
@@ -95,26 +100,71 @@ export async function GET(req: NextRequest) {
       // Use aggregation for property search
       const searchRegex = new RegExp(search.trim(), 'i');
 
+      // Build match conditions for aggregation
+      const matchConditions: any[] = [];
+
+      // Add role-based filters
+      if (query.agentId) {
+        matchConditions.push({ agentId: query.agentId });
+      }
+
+      // Add status filter
+      if (query.status) {
+        matchConditions.push({ status: query.status });
+      }
+
+      // Add date filters - handle them properly for aggregation
+      if (startDate && endDate) {
+        try {
+          const startDateObj = new Date(startDate);
+          const endDateObj = new Date(endDate);
+
+          if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+            matchConditions.push({
+              $or: [
+                {
+                  'customerPreferredDates.date': {
+                    $gte: startDateObj.toISOString().split('T')[0],
+                    $lte: endDateObj.toISOString().split('T')[0],
+                  },
+                },
+                {
+                  agentScheduledDateTime: {
+                    $gte: startDateObj,
+                    $lte: endDateObj,
+                  },
+                },
+              ],
+            });
+          }
+        } catch (dateError) {
+          console.error(
+            'Error processing date range in aggregation:',
+            dateError,
+          );
+        }
+      }
+
       const aggregationPipeline: any[] = [
         {
           $lookup: {
             from: 'properties',
             localField: 'propertyId',
             foreignField: '_id',
-            as: 'propertyId',
+            as: 'propertyData',
           },
         },
         {
-          $unwind: '$propertyId',
+          $unwind: {
+            path: '$propertyData',
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $match: {
             $and: [
-              // Apply role-based filters first
-              ...(query.agentId ? [{ agentId: query.agentId }] : []),
-              ...(query.status ? [{ status: query.status }] : []),
-              // Apply date filters
-              ...(query.$and || []),
+              // Apply all match conditions
+              ...matchConditions,
               // Apply search across customer and property fields
               {
                 $or: [
@@ -122,14 +172,26 @@ export async function GET(req: NextRequest) {
                   { lastName: searchRegex },
                   { email: searchRegex },
                   { phone: searchRegex },
-                  { 'propertyId.address.street': searchRegex },
-                  { 'propertyId.address.suburb': searchRegex },
-                  { 'propertyId.address.state': searchRegex },
-                  { 'propertyId.address.postcode': searchRegex },
-                  { 'propertyId.description': searchRegex },
+                  { 'propertyData.address.street': searchRegex },
+                  { 'propertyData.address.suburb': searchRegex },
+                  { 'propertyData.address.state': searchRegex },
+                  { 'propertyData.address.postcode': searchRegex },
+                  { 'propertyData.description': searchRegex },
                 ],
               },
-            ].filter((condition) => Object.keys(condition).length > 0),
+            ].filter(
+              (condition) => condition && Object.keys(condition).length > 0,
+            ),
+          },
+        },
+        {
+          $addFields: {
+            propertyId: '$propertyData',
+          },
+        },
+        {
+          $project: {
+            propertyData: 0, // Remove the temporary field
           },
         },
         {
@@ -149,15 +211,80 @@ export async function GET(req: NextRequest) {
         { $limit: limit },
       ];
 
+      console.log(
+        'Executing aggregation pipeline:',
+        JSON.stringify(resultPipeline, null, 2),
+      );
       appointments = await Appointment.aggregate(resultPipeline);
+      console.log(
+        'Aggregation completed, found',
+        appointments.length,
+        'appointments',
+      );
     } else {
-      // Use regular query when no search
-      totalCount = await Appointment.countDocuments(query);
-      appointments = await Appointment.find(query)
+      // Use regular query when no search - fix the query structure
+      let finalQuery = {};
+
+      // Add role-based filters
+      if (query.agentId) {
+        finalQuery = { ...finalQuery, agentId: query.agentId };
+      }
+
+      // Add status filter
+      if (query.status) {
+        finalQuery = { ...finalQuery, status: query.status };
+      }
+
+      // Add date filters properly
+      if (startDate && endDate) {
+        try {
+          const startDateObj = new Date(startDate);
+          const endDateObj = new Date(endDate);
+
+          if (!isNaN(startDateObj.getTime()) && !isNaN(endDateObj.getTime())) {
+            finalQuery = {
+              ...finalQuery,
+              $or: [
+                {
+                  'customerPreferredDates.date': {
+                    $gte: startDateObj.toISOString().split('T')[0],
+                    $lte: endDateObj.toISOString().split('T')[0],
+                  },
+                },
+                {
+                  agentScheduledDateTime: {
+                    $gte: startDateObj,
+                    $lte: endDateObj,
+                  },
+                },
+              ],
+            };
+          }
+        } catch (dateError) {
+          console.error(
+            'Error processing date range in regular query:',
+            dateError,
+          );
+        }
+      }
+
+      console.log(
+        'Executing regular query:',
+        JSON.stringify(finalQuery, null, 2),
+      );
+      totalCount = await Appointment.countDocuments(finalQuery);
+      console.log('Count query completed, total:', totalCount);
+
+      appointments = await Appointment.find(finalQuery)
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 })
         .populate('propertyId');
+      console.log(
+        'Find query completed, found',
+        appointments.length,
+        'appointments',
+      );
     }
 
     const totalPages = Math.ceil(totalCount / limit);
