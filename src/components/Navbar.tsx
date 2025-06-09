@@ -69,13 +69,16 @@ export default function Navbar() {
                     {session.user?.name || session.user?.email}
                   </span>
                 </div>
-                {session.user?.role === 'admin' && (
+                {(session.user?.role === 'admin' ||
+                  session.user?.role === 'agent') && (
                   <Link
                     href="/admin/dashboard"
-                    className="flex items-center space-x-1 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-md text-sm transition-colors duration-200"
+                    className="flex items-center space-x-1 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-md text-sm transition-colors duration-200 cursor-pointer"
                   >
                     <Settings className="h-4 w-4" />
-                    <span>Admin</span>
+                    <span>
+                      {session.user?.role === 'admin' ? 'Admin' : 'Agent Panel'}
+                    </span>
                   </Link>
                 )}
                 <button
@@ -144,14 +147,19 @@ export default function Navbar() {
                         {session.user?.name || session.user?.email}
                       </span>
                     </div>
-                    {session.user?.role === 'admin' && (
+                    {(session.user?.role === 'admin' ||
+                      session.user?.role === 'agent') && (
                       <Link
                         href="/admin/dashboard"
-                        className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium"
+                        className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 hover:bg-gray-100 block px-3 py-2 rounded-md text-base font-medium cursor-pointer"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         <Settings className="h-4 w-4" />
-                        <span>Admin Dashboard</span>
+                        <span>
+                          {session.user?.role === 'admin'
+                            ? 'Admin Dashboard'
+                            : 'Agent Panel'}
+                        </span>
                       </Link>
                     )}
                     <button

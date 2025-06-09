@@ -271,8 +271,8 @@ export async function seedAdminUser() {
   const adminEmail = 'admin@hometrace.com';
   const adminPassword = 'H0metrace';
 
-  // Delete existing admin user to ensure clean reset
-  await User.deleteMany({ email: adminEmail });
+  // Delete ALL existing users to ensure complete clean reset
+  await User.deleteMany({});
 
   const hashedPassword = await hash(adminPassword, 12);
 
@@ -294,8 +294,8 @@ export async function seedAdminUser() {
 export async function seedAgentUsers() {
   await connectMongo();
 
-  // First, delete all existing agent users to ensure clean reset
-  await User.deleteMany({ role: 'agent' });
+  // Note: All users are already deleted in seedAdminUser()
+  // This function now only creates agent users
 
   const agents = [
     {
