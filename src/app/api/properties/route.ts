@@ -20,6 +20,16 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
+    console.log('Properties API called with:', {
+      page,
+      limit,
+      search,
+      propertyType,
+      postcode,
+      suburb,
+      state,
+    });
+
     let query: any = {};
 
     // If ID is provided, return specific property
@@ -94,6 +104,15 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+
+    console.log('Properties API response:', {
+      totalCount,
+      propertiesReturned: properties.length,
+      page,
+      limit,
+      totalPages,
+      hasMore: page < totalPages,
+    });
 
     return NextResponse.json({
       data: properties,

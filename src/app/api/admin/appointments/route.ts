@@ -39,31 +39,48 @@ export async function GET(req: NextRequest) {
 
     // Date range filter for calendar view
     if (startDate && endDate) {
-      // For calendar view, we need to check both customer preferred dates and agent scheduled date
-      const startDateObj = new Date(startDate);
-      const endDateObj = new Date(endDate);
+      try {
+        // For calendar view, we need to check both customer preferred dates and agent scheduled date
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
 
-      const dateQuery = {
-        $or: [
-          {
-            'customerPreferredDates.date': {
-              $gte: startDateObj.toISOString().split('T')[0],
-              $lte: endDateObj.toISOString().split('T')[0],
-            },
-          },
-          {
-            agentScheduledDateTime: {
-              $gte: startDateObj,
-              $lte: endDateObj,
-            },
-          },
-        ],
-      };
+        // Validate dates
+        if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+          console.error('Invalid date range:', { startDate, endDate });
+          return NextResponse.json(
+            { error: 'Invalid date range provided' },
+            { status: 400 },
+          );
+        }
 
-      if (query.$and) {
-        query.$and.push(dateQuery);
-      } else {
-        Object.assign(query, dateQuery);
+        const dateQuery = {
+          $or: [
+            {
+              'customerPreferredDates.date': {
+                $gte: startDateObj.toISOString().split('T')[0],
+                $lte: endDateObj.toISOString().split('T')[0],
+              },
+            },
+            {
+              agentScheduledDateTime: {
+                $gte: startDateObj,
+                $lte: endDateObj,
+              },
+            },
+          ],
+        };
+
+        if (query.$and) {
+          query.$and.push(dateQuery);
+        } else {
+          query.$and = [dateQuery];
+        }
+      } catch (dateError) {
+        console.error('Error processing date range:', dateError);
+        return NextResponse.json(
+          { error: 'Error processing date range' },
+          { status: 400 },
+        );
       }
     }
 
@@ -92,7 +109,10 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             $and: [
-              // Apply other filters
+              // Apply role-based filters first
+              ...(query.agentId ? [{ agentId: query.agentId }] : []),
+              ...(query.status ? [{ status: query.status }] : []),
+              // Apply date filters
               ...(query.$and || []),
               // Apply search across customer and property fields
               {
@@ -105,7 +125,7 @@ export async function GET(req: NextRequest) {
                   { 'propertyId.address.suburb': searchRegex },
                   { 'propertyId.address.state': searchRegex },
                   { 'propertyId.address.postcode': searchRegex },
-                  { 'propertyId.title': searchRegex },
+                  { 'propertyId.description': searchRegex },
                 ],
               },
             ].filter((condition) => Object.keys(condition).length > 0),
@@ -154,10 +174,18 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching appointments:', error);
+
+    // More detailed error logging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch appointments',
+        details: process.env.NODE_ENV === 'development' ? error : undefined,
       },
       { status: 500 },
     );

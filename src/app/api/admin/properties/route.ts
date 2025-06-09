@@ -18,21 +18,66 @@ export async function GET(req: NextRequest) {
 
     await connectMongo();
 
-    let query = {};
+    // Get pagination parameters
+    const page = parseInt(req.nextUrl.searchParams.get('page') || '1');
+    const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20');
+    const search = req.nextUrl.searchParams.get('search');
+
+    console.log('Properties API - Pagination params:', { page, limit, search });
+
+    let query: any = {};
 
     // If user is an agent, only show their properties
     if (session.user.role === 'agent') {
-      query = { agentId: session.user.id };
+      query.agentId = session.user.id;
     }
-    // If user is admin, show all properties (no filter)
+    // If user is admin, show all properties (no additional filter)
 
+    // Add search functionality
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { description: searchRegex },
+        { 'address.street': searchRegex },
+        { 'address.suburb': searchRegex },
+        { 'address.state': searchRegex },
+        { 'address.postcode': searchRegex },
+        { propertyType: searchRegex },
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalCount = await Property.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Get properties with pagination
     const properties = await Property.find(query)
       .populate('agentId', 'firstName lastName email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const paginationInfo = {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+      limit,
+    };
+
+    console.log('Properties API - Response:', {
+      propertiesCount: properties.length,
+      pagination: paginationInfo,
+    });
 
     return NextResponse.json({
       success: true,
       data: properties,
+      pagination: paginationInfo,
     });
   } catch (error) {
     console.error('Error fetching properties:', error);

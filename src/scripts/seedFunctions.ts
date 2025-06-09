@@ -133,6 +133,138 @@ const australianSuburbs = [
   { suburb: 'Kingston', state: 'ACT', postcode: '2604' },
 ];
 
+// Diverse Australian street names for realistic addresses
+const australianStreetNames = [
+  'King Street',
+  'Queen Street',
+  'George Street',
+  'Collins Street',
+  'Elizabeth Street',
+  'Bourke Street',
+  'Flinders Street',
+  'Chapel Street',
+  'High Street',
+  'Main Street',
+  'Church Street',
+  'Park Avenue',
+  'Victoria Street',
+  'Albert Street',
+  'William Street',
+  'James Street',
+  'Mary Street',
+  'Ann Street',
+  'Edward Street',
+  'Adelaide Street',
+  'Spring Street',
+  'Russell Street',
+  'Swanston Street',
+  'Little Collins Street',
+  'Lonsdale Street',
+  'La Trobe Street',
+  'Spencer Street',
+  'Pitt Street',
+  'Castlereagh Street',
+  'Macquarie Street',
+  'Hunter Street',
+  'Martin Place',
+  'Circular Quay',
+  'The Rocks',
+  'Darling Harbour',
+  'Oxford Street',
+  'Crown Street',
+  'Cleveland Street',
+  'Anzac Parade',
+  'Parramatta Road',
+  'Pacific Highway',
+  'Princes Highway',
+  'Great Western Highway',
+  'Hume Highway',
+  'Old South Head Road',
+  'New South Head Road',
+  'Military Road',
+  'Spit Road',
+  'Warringah Road',
+  'Pittwater Road',
+  'Barrenjoey Road',
+  'Mona Vale Road',
+  'Forest Way',
+  'Wakehurst Parkway',
+  'Eastern Valley Way',
+  'Ryde Road',
+  'Epping Road',
+  'Lane Cove Road',
+  'Pacific Highway',
+  'Willoughby Road',
+  'Chatswood Avenue',
+  'Victoria Avenue',
+  'Anderson Street',
+  'Help Street',
+  'Archer Street',
+  'Miller Street',
+  'Berry Street',
+  'Walker Street',
+  'Ridge Street',
+  'Falcon Street',
+  'Hampden Road',
+  'Sailors Bay Road',
+  'Spit Junction',
+  'Military Road',
+  'Neutral Bay',
+  'Kurraba Road',
+  'Ben Boyd Road',
+  'Wycombe Road',
+  'Rangers Road',
+  'Bradleys Head Road',
+  'Taronga Zoo',
+  'Mosman Bay',
+  'Balmoral Beach',
+  'The Esplanade',
+  'Raglan Street',
+  'Munn Street',
+  'Spit Bridge',
+  'Seaforth Crescent',
+  'Sydney Road',
+  'Roseville Avenue',
+  'Lindfield Avenue',
+  'Pacific Street',
+  'Turramurra Avenue',
+  'Pymble Avenue',
+  'Gordon Avenue',
+  'Killara Avenue',
+  'Wahroonga Avenue',
+  'Hornsby Avenue',
+  'Pennant Hills Road',
+  'Carlingford Road',
+  'North Rocks Road',
+  'Castle Hill Road',
+  'Old Northern Road',
+  'Windsor Road',
+  'Blacktown Road',
+  'Great Western Highway',
+  'Penrith Road',
+  'Richmond Road',
+  'Hawkesbury Road',
+  'Bells Line of Road',
+];
+
+// Global set to track used images across all properties
+const globalUsedImages = new Set<string>();
+
+// Function to validate if image URL is accessible
+async function validateImageUrl(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return (
+      (response.ok &&
+        response.headers.get('content-type')?.startsWith('image/')) ||
+      false
+    );
+  } catch (error) {
+    console.warn(`Image validation failed for ${url}:`, error);
+    return false;
+  }
+}
+
 export async function seedAdminUser() {
   await connectMongo();
 
@@ -219,6 +351,9 @@ export async function seedSampleProperties() {
   // Delete all existing properties to ensure clean reset
   await Property.deleteMany({});
 
+  // Clear global used images set for fresh start
+  globalUsedImages.clear();
+
   // Get all agent users to assign properties to them
   const agents = await User.find({ role: 'agent' });
   if (agents.length === 0) {
@@ -250,6 +385,10 @@ export async function seedSampleProperties() {
       const location =
         australianSuburbs[Math.floor(Math.random() * australianSuburbs.length)];
       const streetNumber = Math.floor(Math.random() * 100) + 1;
+      const streetName =
+        australianStreetNames[
+          Math.floor(Math.random() * australianStreetNames.length)
+        ];
       const currentPropertyType = propertyTypes[i % propertyTypes.length];
 
       // Get appropriate images for the property type
@@ -257,22 +396,47 @@ export async function seedSampleProperties() {
         propertyImagesByType[
           currentPropertyType as keyof typeof propertyImagesByType
         ] || propertyImagesByType.House;
-      // Generate 6 unique images for each property
+
+      // Generate 6 unique images for each property with validation
       const selectedImages: string[] = [];
+      const availableImages = typeImages.filter(
+        (img) => !globalUsedImages.has(img),
+      );
+
+      // If we don't have enough unused images, we'll need to reuse some
+      const imagesToUse =
+        availableImages.length >= 6 ? availableImages : typeImages;
       const usedIndices = new Set<number>();
 
+      while (
+        selectedImages.length < 6 &&
+        selectedImages.length < imagesToUse.length
+      ) {
+        const randomIndex = Math.floor(Math.random() * imagesToUse.length);
+        if (!usedIndices.has(randomIndex)) {
+          const imageUrl = imagesToUse[randomIndex];
+          usedIndices.add(randomIndex);
+          selectedImages.push(imageUrl);
+          globalUsedImages.add(imageUrl); // Track globally used images
+        }
+
+        // If we've used all available images for this type, break
+        if (usedIndices.size === imagesToUse.length) {
+          break;
+        }
+      }
+
+      // If we still need more images, fill with remaining from the same type
       while (selectedImages.length < 6) {
         const randomIndex = Math.floor(Math.random() * typeImages.length);
-        if (!usedIndices.has(randomIndex)) {
-          usedIndices.add(randomIndex);
-          selectedImages.push(typeImages[randomIndex]);
-        }
-        // If we've used all available images, start reusing them
-        if (
-          usedIndices.size === typeImages.length &&
-          selectedImages.length < 6
-        ) {
-          usedIndices.clear();
+        const imageUrl = typeImages[randomIndex];
+        if (!selectedImages.includes(imageUrl)) {
+          selectedImages.push(imageUrl);
+        } else {
+          // If all images from this type are used, just add a random one
+          selectedImages.push(
+            typeImages[Math.floor(Math.random() * typeImages.length)],
+          );
         }
       }
 
@@ -307,7 +471,7 @@ export async function seedSampleProperties() {
         propertyType: currentPropertyType,
         agentId: assignedAgent._id, // Assign the property to an agent
         address: {
-          street: `${streetNumber} Sample Street`,
+          street: `${streetNumber} ${streetName}`,
           suburb: location.suburb,
           state: location.state,
           postcode: location.postcode,
@@ -320,12 +484,60 @@ export async function seedSampleProperties() {
       };
     });
 
+  // Validate images before inserting properties (optional - can be time consuming)
+  console.log('Validating property images...');
+  let validatedCount = 0;
+  let invalidCount = 0;
+
+  for (const property of sampleProperties) {
+    const validatedImages: string[] = [];
+
+    for (const imageUrl of property.images) {
+      const baseUrl = imageUrl.split('?')[0]; // Remove query parameters for validation
+      const isValid = await validateImageUrl(baseUrl);
+
+      if (isValid) {
+        validatedImages.push(imageUrl);
+        validatedCount++;
+      } else {
+        invalidCount++;
+        console.warn(`Invalid image URL removed: ${baseUrl}`);
+      }
+    }
+
+    // Ensure we have at least 3 images per property, otherwise use fallback
+    if (validatedImages.length < 3) {
+      // Add some fallback images from the same property type
+      const typeImages =
+        propertyImagesByType[
+          property.propertyType as keyof typeof propertyImagesByType
+        ] || propertyImagesByType.House;
+      while (
+        validatedImages.length < 6 &&
+        validatedImages.length < typeImages.length
+      ) {
+        const fallbackImage =
+          typeImages[Math.floor(Math.random() * typeImages.length)];
+        const fallbackUrl = `${fallbackImage}?auto=format&fit=crop&w=800&h=600&q=80`;
+        if (!validatedImages.includes(fallbackUrl)) {
+          validatedImages.push(fallbackUrl);
+        }
+      }
+    }
+
+    property.images = validatedImages;
+  }
+
+  console.log(
+    `Image validation complete: ${validatedCount} valid, ${invalidCount} invalid images`,
+  );
+
   const result = await Property.insertMany(sampleProperties);
 
   return {
     success: true,
     count: result.length,
-    message: `Successfully seeded ${result.length} properties`,
+    message: `Successfully seeded ${result.length} properties with validated images`,
   };
 }
 

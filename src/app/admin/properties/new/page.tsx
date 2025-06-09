@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function NewPropertyPage() {
   const router = useRouter();
@@ -41,6 +42,8 @@ export default function NewPropertyPage() {
     landSize: '',
     features: '',
   });
+
+  const [images, setImages] = useState<string[]>([]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -80,7 +83,7 @@ export default function NewPropertyPage() {
               .map((f) => f.trim())
               .filter((f) => f)
           : [],
-        images: [], // Default empty images array
+        images: images,
       };
 
       await axios.post('/api/admin/properties', createData);
@@ -328,6 +331,24 @@ export default function NewPropertyPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Property Images */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Property Images</CardTitle>
+            <CardDescription>
+              Upload images to showcase the property (maximum 6 images)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ImageUpload
+              images={images}
+              onImagesChange={setImages}
+              maxImages={6}
+              disabled={saving}
+            />
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end space-x-4 mt-6">
           <Link href="/admin/properties">

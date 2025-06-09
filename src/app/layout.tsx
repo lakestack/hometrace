@@ -4,6 +4,7 @@ import './globals.css';
 import SessionProviderWrapper from '@/components/SessionProviderWrapper';
 import { Toaster } from 'react-hot-toast';
 import LayoutWrapper from '@/components/LayoutWrapper';
+import GlobalErrorHandler from '@/components/GlobalErrorHandler';
 
 export const metadata: Metadata = {
   title: 'Hometrace - Find Your Dream Home',
@@ -33,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={geist.className}>
       <body className="antialiased">
+        <GlobalErrorHandler />
         <SessionProviderWrapper>
           <LayoutWrapper>{children}</LayoutWrapper>
         </SessionProviderWrapper>

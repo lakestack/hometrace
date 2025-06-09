@@ -205,6 +205,13 @@ export async function PUT(
         : [];
     }
 
+    // Handle images update
+    if (updateData.images !== undefined && updateData.images !== null) {
+      updateFields.images = Array.isArray(updateData.images)
+        ? updateData.images
+        : [];
+    }
+
     // Update the property
     const updatedProperty = await Property.findByIdAndUpdate(
       resolvedParams.id,

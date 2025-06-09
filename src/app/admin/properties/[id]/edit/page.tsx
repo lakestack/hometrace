@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import ImageUpload from '@/components/ImageUpload';
 
 interface Property {
   _id: string;
@@ -48,6 +49,7 @@ export default function EditPropertyPage() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -92,6 +94,7 @@ export default function EditPropertyPage() {
           landSize: propertyData.landSize?.toString() || '',
           features: propertyData.features?.join(', ') || '',
         });
+        setImages(propertyData.images || []);
       }
     } catch (error) {
       console.error('Error fetching property:', error);
@@ -139,6 +142,7 @@ export default function EditPropertyPage() {
               .map((f) => f.trim())
               .filter((f) => f)
           : [],
+        images: images,
       };
 
       await axios.put(`/api/admin/properties/${propertyId}`, updateData);
@@ -391,6 +395,24 @@ export default function EditPropertyPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Property Images */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Property Images</CardTitle>
+            <CardDescription>
+              Upload images to showcase the property (maximum 6 images)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ImageUpload
+              images={images}
+              onImagesChange={setImages}
+              maxImages={6}
+              disabled={saving}
+            />
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end space-x-4 mt-6">
           <Link href="/admin/properties">

@@ -183,6 +183,15 @@ function PropertiesContent() {
       const limit = response?.data?.meta?.limit || 9;
       const totalPages = Math.ceil(total / limit);
 
+      console.log('Properties API response:', {
+        page,
+        newPropertiesCount: newProperties.length,
+        total,
+        limit,
+        totalPages,
+        hasMore: page < totalPages,
+      });
+
       setTotalCount(total);
 
       if (reset) {
@@ -220,6 +229,10 @@ function PropertiesContent() {
       (entries) => {
         const entry = entries[0];
         if (entry.isIntersecting && hasMore && !loadingMore && !loading) {
+          console.log(
+            'Infinite scroll triggered - loading page:',
+            currentPage + 1,
+          );
           fetchPropertiesWithParams(currentPage + 1, false);
         }
       },
@@ -236,7 +249,7 @@ function PropertiesContent() {
         observerRef.current.disconnect();
       }
     };
-  }, [hasMore, loadingMore, loading, currentPage, totalCount]);
+  }, [hasMore, loadingMore, loading, currentPage]);
 
   const updateURL = (params: Record<string, string>) => {
     const newParams = new URLSearchParams();

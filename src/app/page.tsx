@@ -18,7 +18,8 @@ export default function Home() {
     async function fetchProperties() {
       try {
         setLoading(true);
-        const response = await axios.get('/api/properties');
+        // Load more properties for the home page showcase
+        const response = await axios.get('/api/properties?limit=50');
         const properties = response?.data?.data || [];
         setProperties(properties);
       } catch (error) {
