@@ -3,6 +3,8 @@ import User from '@/models/user';
 import Property from '@/models/property';
 import Appointment from '@/models/appointment';
 import connectMongo from '@/lib/connectMongo';
+// Import models registry to ensure all models are registered
+import '@/lib/models';
 
 // Real property image URLs (from Unsplash) - organized by property type
 const propertyImagesByType = {

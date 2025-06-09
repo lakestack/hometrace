@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Appointment from '@/models/appointment';
 import connectMongo from '@/lib/connectMongo';
+// Import models registry to ensure all models are registered
+import '@/lib/models';
 
 export async function GET(req: NextRequest) {
   try {

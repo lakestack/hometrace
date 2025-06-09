@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ensureModelsRegistered, validateModelsRegistered } from '@/lib/models';
 
 type MongooseCache = {
   conn: typeof mongoose | null;
@@ -42,6 +43,15 @@ async function connectMongo(): Promise<typeof mongoose> {
 
   try {
     cached.conn = await cached.promise;
+
+    // Ensure all models are registered after connection
+    ensureModelsRegistered();
+
+    // Validate that all required models are registered (in development)
+    if (process.env.NODE_ENV === 'development') {
+      validateModelsRegistered();
+    }
+
     return cached.conn;
   } catch (e) {
     cached.promise = null;

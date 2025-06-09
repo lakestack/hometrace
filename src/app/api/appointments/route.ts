@@ -3,6 +3,8 @@ import Appointment from '@/models/appointment';
 import Property from '@/models/property';
 import User from '@/models/user';
 import connectMongo from '@/lib/connectMongo';
+// Import models registry to ensure all models are registered
+import '@/lib/models';
 import { sendNewAppointmentNotification } from '@/lib/emailService';
 
 export async function GET(request: NextRequest) {
