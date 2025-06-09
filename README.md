@@ -2,14 +2,54 @@
 
 A modern real estate platform built with Next.js, featuring advanced appointment management, property listings, and role-based admin panel.
 
+## 🌐 Live Demo
+
+**🚀 Try the live demo**: [https://hometrace.vercel.app](https://hometrace.vercel.app)
+
+**📧 Demo Email Access**: `april.rempel@ethereal.email` / `gFwA9KGD6hnJ1YjSkn` via [Ethereal Email](https://ethereal.email/login)
+
+**🔑 Demo Credentials**:
+
+- **Admin**: `admin@hometrace.com` / `H0metrace`
+- **Agent**: `agent1@hometrace.com` / `Agent123`, `agent2@hometrace.com` / `Agent123`, `agent3@hometrace.com` / `Agent123`
+- **Customer**: Browse properties and book appointments without login
+
+> 💡 **Tip**: Use the demo email link above to view appointment confirmation emails and other system notifications in real-time!
+
 ## ✨ Key Features
 
 ### 🎯 **Advanced Appointment Management**
 
-- **Google Calendar-style Interface**: Drag-and-drop appointment scheduling with half-hour time slots
 - **Smart Workflow**: Customer submits preferred times → Agent schedules → Email notifications → Customer confirms
+- **Google Calendar-style Interface**: Drag-and-drop appointment scheduling with half-hour time slots
 - **Real-time Updates**: Live calendar view with overlapping appointment support
 - **Email Integration**: Automated notifications for appointment requests and confirmations
+
+#### 📋 **How the Appointment Workflow Works:**
+
+1. **🏠 Customer Books Appointment**
+
+   - Browse properties and click "Book Appointment"
+   - Select up to 3 preferred date/time slots
+   - Submit appointment request (Status: **Pending**)
+
+2. **👨‍💼 Agent Reviews & Schedules**
+
+   - Login to admin panel to view appointment requests
+   - Use calendar view to drag-and-drop or manually set scheduled time
+   - Confirm the appointment (Status: **Scheduled**)
+
+3. **📧 Email Notification Sent**
+
+   - System automatically sends confirmation email to customer
+   - Email includes scheduled date/time and property details
+   - Check demo emails at: [april.rempel@ethereal.email](https://april.rempel@ethereal.email/gFwA9KGD6hnJ1YjSkn)
+
+4. **✅ Customer Confirms**
+   - Customer receives email and can accept or decline
+   - Final status: **Confirmed** or **Cancelled**
+
+> 💡 **Testing Tip**: To see the full workflow in action, book an appointment as a customer, then login as an agent to schedule it, and check the demo email inbox to see the notification!
 
 ### 🏘️ **Property Management**
 
@@ -51,6 +91,8 @@ A modern real estate platform built with Next.js, featuring advanced appointment
 - **SMTP Server**: For email notifications (optional)
 
 ## 🚀 Quick Start
+
+> 🌟 **Want to try it first?** Check out our [live demo](https://hometrace.vercel.app) before setting up locally!
 
 ### 1. Clone and Install
 
@@ -126,7 +168,35 @@ src/
 └── scripts/              # Database seeding
 ```
 
-## 🎮 Usage Guide
+## 🎮 Usage Guide & Testing Instructions
+
+### 🧪 **Complete Workflow Testing** (Recommended)
+
+**Step 1: Book as Customer**
+
+1. Visit [demo site](https://hometrace.vercel.app)
+2. Browse properties and click "Book Appointment" on any property
+3. Fill in your details and select 2-3 preferred time slots
+4. Submit the form (Status: **Pending**)
+
+**Step 2: Schedule as Agent**
+
+1. Login with: `agent@hometrace.com` / `Agent123`
+2. Go to Admin → Appointments
+3. Find your booking and click "Schedule" or use Calendar view
+4. Set a confirmed date/time (Status: **Scheduled**)
+
+**Step 3: Check Email Notification**
+
+1. Visit [april.rempel@ethereal.email](https://april.rempel@ethereal.email/gFwA9KGD6hnJ1YjSkn)
+2. Look for the appointment confirmation email
+3. See the scheduled details and property information
+
+**Step 4: Customer Response** (Optional)
+
+1. Customer can accept/decline from email (Status: **Confirmed**/**Cancelled**)
+
+---
 
 ### For Customers
 
