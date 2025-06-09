@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import Appointment from '@/models/appointment';
+import Property from '@/models/property';
 import connectMongo from '@/lib/connectMongo';
 
 export async function GET(req: NextRequest) {
