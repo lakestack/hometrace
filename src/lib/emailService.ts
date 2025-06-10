@@ -314,3 +314,120 @@ If you have any questions, please contact your agent directly at ${data.agentEma
     };
   }
 };
+
+export interface CustomerResponseEmailData {
+  agentEmail: string;
+  agentName: string;
+  customerName: string;
+  customerEmail: string;
+  propertyAddress: string;
+  proposedDateTime: Date;
+  responseAction: 'accept' | 'decline';
+  appointmentId: string;
+}
+
+export const sendCustomerResponseNotification = async (
+  data: CustomerResponseEmailData,
+) => {
+  try {
+    const transporter = createTransporter();
+
+    const proposedTime = format(
+      data.proposedDateTime,
+      "EEEE, MMMM d, yyyy 'at' h:mm a",
+    );
+
+    const isAccepted = data.responseAction === 'accept';
+    const statusText = isAccepted ? 'ACCEPTED' : 'DECLINED';
+    const statusColor = isAccepted ? '#10b981' : '#ef4444';
+    const statusIcon = isAccepted ? '✓' : '✗';
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Customer Response to Appointment Proposal</h2>
+
+        <p>Dear ${data.agentName},</p>
+
+        <p>Your customer <strong>${data.customerName}</strong> has responded to your appointment time proposal:</p>
+
+        <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #1e40af; margin-top: 0;">Appointment Details</h3>
+          <p><strong>Property:</strong> ${data.propertyAddress}</p>
+          <p><strong>Customer:</strong> ${data.customerName} (${data.customerEmail})</p>
+          <p><strong>Proposed Time:</strong> ${proposedTime}</p>
+          <div style="margin-top: 15px; padding: 10px; border-radius: 6px; background-color: ${isAccepted ? '#ecfdf5' : '#fef2f2'}; border-left: 4px solid ${statusColor};">
+            <p style="margin: 0; font-weight: bold; color: ${statusColor};">
+              ${statusIcon} Customer Response: ${statusText}
+            </p>
+          </div>
+        </div>
+
+        ${
+          isAccepted
+            ? `
+        <div style="background-color: #ecfdf5; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #10b981;">
+          <p style="margin: 0; color: #065f46;">
+            <strong>Great news!</strong> The appointment has been confirmed. You can now proceed with the scheduled viewing.
+          </p>
+        </div>
+        `
+            : `
+        <div style="background-color: #fef2f2; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ef4444;">
+          <p style="margin: 0; color: #991b1b;">
+            The customer has declined this time slot. You may want to propose an alternative time or contact them directly to discuss other options.
+          </p>
+        </div>
+        `
+        }
+
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${process.env.NEXTAUTH_URL}/admin/appointments"
+             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+            View in Admin Panel
+          </a>
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+          <p>You can contact the customer directly at ${data.customerEmail} if needed.</p>
+          <p>This is an automated notification from HomeTrace.</p>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || 'noreply@hometrace.com',
+      to: data.agentEmail,
+      subject: `Customer ${statusText} Appointment - ${data.propertyAddress}`,
+      html: emailHtml,
+      text: `
+Dear ${data.agentName},
+
+Your customer ${data.customerName} has ${data.responseAction === 'accept' ? 'ACCEPTED' : 'DECLINED'} your appointment time proposal.
+
+Appointment Details:
+Property: ${data.propertyAddress}
+Customer: ${data.customerName} (${data.customerEmail})
+Proposed Time: ${proposedTime}
+Status: ${statusText}
+
+${
+  isAccepted
+    ? 'The appointment has been confirmed. You can now proceed with the scheduled viewing.'
+    : 'You may want to propose an alternative time or contact the customer directly.'
+}
+
+View in Admin Panel: ${process.env.NEXTAUTH_URL}/admin/appointments
+      `.trim(),
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Customer response email sent successfully:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending customer response email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+};

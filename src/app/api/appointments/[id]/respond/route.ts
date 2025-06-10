@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Appointment from '@/models/appointment';
+import User from '@/models/user';
 import connectMongo from '@/lib/connectMongo';
+import { sendCustomerResponseNotification } from '@/lib/emailService';
 
 export async function GET(
   req: NextRequest,
@@ -20,7 +22,7 @@ export async function GET(
     await connectMongo();
     const { id } = await params;
 
-    const appointment = await Appointment.findById(id);
+    const appointment = await Appointment.findById(id).populate('propertyId');
 
     if (!appointment) {
       return NextResponse.json(
@@ -45,6 +47,36 @@ export async function GET(
     }
 
     await appointment.save();
+
+    // Send email notification to agent about customer response
+    try {
+      if (appointment.agentId) {
+        const agent = await User.findById(appointment.agentId);
+        const property = appointment.propertyId as any;
+
+        if (agent && agent.email && property) {
+          const propertyAddress = `${property.address.street}, ${property.address.suburb}, ${property.address.state} ${property.address.postcode}`;
+
+          await sendCustomerResponseNotification({
+            agentEmail: agent.email,
+            agentName: `${agent.firstName} ${agent.lastName}`,
+            customerName: `${appointment.firstName} ${appointment.lastName}`,
+            customerEmail: appointment.email,
+            propertyAddress,
+            proposedDateTime: appointment.agentScheduledDateTime,
+            responseAction: action as 'accept' | 'decline',
+            appointmentId: (appointment._id as any).toString(),
+          });
+
+          console.log(
+            `Agent notification email sent successfully for ${action} response`,
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending agent notification email:', emailError);
+      // Don't fail the request if email fails - the appointment status was already updated
+    }
 
     // Return a user-friendly HTML response
     const responseHtml = `
@@ -120,6 +152,9 @@ export async function GET(
                 ? 'Thank you for confirming your appointment. We look forward to seeing you!'
                 : 'Your appointment has been cancelled. If you would like to reschedule, please contact your agent directly.'
             }
+          </p>
+          <p style="color: #6b7280; font-size: 14px;">
+            Your agent has been automatically notified of your response.
           </p>
           <div class="appointment-details">
             <strong>Status:</strong> ${(appointment.status || 'pending').toUpperCase()}<br>
