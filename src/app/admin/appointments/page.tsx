@@ -151,6 +151,16 @@ function AgentScheduleCell({
     }
   };
 
+  // Helper function to set today's date when starting to edit
+  const handleStartEditing = () => {
+    setIsEditing(true);
+    // If no preset value, default to today's date
+    if (!appointment.agentScheduledDateTime && !selectedDate) {
+      const today = new Date().toISOString().split('T')[0];
+      setSelectedDate(today);
+    }
+  };
+
   if (isEditing) {
     return (
       <div className="space-y-2 min-w-[250px]">
@@ -236,7 +246,7 @@ function AgentScheduleCell({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setIsEditing(true)}
+            onClick={handleStartEditing}
             className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
             disabled={isLoading}
           >
@@ -247,7 +257,7 @@ function AgentScheduleCell({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setIsEditing(true)}
+          onClick={handleStartEditing}
           className="h-8 px-3 text-xs border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
           disabled={isLoading}
         >

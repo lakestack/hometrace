@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -60,6 +60,8 @@ export default function AppointmentPage({
     control,
     handleSubmit,
     formState: { errors },
+    setValue,
+    watch,
   } = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
@@ -75,6 +77,30 @@ export default function AppointmentPage({
     control,
     name: 'customerPreferredDates',
   });
+
+  // Helper function to get today's date in YYYY-MM-DD format
+  const getTodayString = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Enhanced add appointment slot function with today's date as default
+  const addAppointmentSlotWithToday = () => {
+    addAppointmentSlot({ date: getTodayString(), time: '' });
+  };
+
+  // Set today's date as default for the first appointment slot when form loads
+  useEffect(() => {
+    if (appointmentSlots.length > 0 && !appointmentSlots[0].date) {
+      setValue('customerPreferredDates.0.date', getTodayString());
+    }
+  }, [appointmentSlots, setValue]);
+
+  // Helper function to handle date input focus - set today's date if empty
+  const handleDateFocus = (index: number, currentValue: string) => {
+    if (!currentValue) {
+      setValue(`customerPreferredDates.${index}.date`, getTodayString());
+    }
+  };
 
   const onSubmit = async (data: AppointmentFormData) => {
     if (isSubmitting) return; // Prevent multiple submissions
@@ -221,7 +247,7 @@ export default function AppointmentPage({
               {appointmentSlots.length < 3 && (
                 <button
                   type="button"
-                  onClick={() => addAppointmentSlot({ date: '', time: '' })}
+                  onClick={addAppointmentSlotWithToday}
                   className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer"
                 >
                   + Add another option
@@ -255,6 +281,12 @@ export default function AppointmentPage({
                         })}
                         type="date"
                         min={new Date().toISOString().split('T')[0]}
+                        onFocus={() => {
+                          const currentValue = watch(
+                            `customerPreferredDates.${index}.date`,
+                          );
+                          handleDateFocus(index, currentValue);
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       {errors.customerPreferredDates?.[index]?.date && (
