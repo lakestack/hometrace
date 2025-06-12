@@ -5,6 +5,7 @@ import SessionProviderWrapper from '@/components/SessionProviderWrapper';
 import { Toaster } from 'react-hot-toast';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import GlobalErrorHandler from '@/components/GlobalErrorHandler';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'Hometrace - Find Your Dream Home',
@@ -48,6 +49,7 @@ export default function RootLayout({
             },
           }}
         />
+        <Analytics />
       </body>
     </html>
   );
